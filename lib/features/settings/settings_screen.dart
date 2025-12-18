@@ -1,3 +1,4 @@
+// lib/features/settings/settings_screen.dart
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,13 +14,24 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  // We reuse one controller, but switch its content based on selection
   final _apiKeyController = TextEditingController();
+
   final _heightController = TextEditingController();
   final _weightController = TextEditingController();
   final _extraContextController = TextEditingController();
 
+  // Settings State
+  String _activeProvider = 'gemini'; // Default
   String? _selectedGender;
   bool _isLoading = true;
+
+  // Cache keys temporarily so they don't get lost when switching dropdowns
+  final Map<String, String> _keyCache = {
+    'gemini': '',
+    'openai': '',
+    'deepseek': '',
+  };
 
   @override
   void initState() {
@@ -29,30 +41,68 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
+
+    // 1. Load Keys
+    String geminiKey = prefs.getString('api_key_gemini') ??
+        prefs.getString('custom_api_key') ??
+        '';
+    String openaiKey = prefs.getString('api_key_openai') ?? '';
+    String deepseekKey = prefs.getString('api_key_deepseek') ?? '';
+
     setState(() {
-      _apiKeyController.text = prefs.getString('custom_api_key') ?? '';
+      _activeProvider = prefs.getString('active_ai_provider') ?? 'gemini';
+
+      // Store in cache
+      _keyCache['gemini'] = geminiKey;
+      _keyCache['openai'] = openaiKey;
+      _keyCache['deepseek'] = deepseekKey;
+
+      // Set controller to currently active provider's key
+      _apiKeyController.text = _keyCache[_activeProvider]!;
+
+      // Load Profile
       _selectedGender = prefs.getString('user_gender');
       _heightController.text = prefs.getString('user_height') ?? '';
       _weightController.text = prefs.getString('user_weight') ?? '';
       _extraContextController.text =
           prefs.getString('user_extra_context') ?? '';
+
       _isLoading = false;
+    });
+  }
+
+  // Handle Dropdown Change
+  void _onProviderChanged(String? newValue) {
+    if (newValue == null) return;
+
+    // Save current text to cache before switching
+    _keyCache[_activeProvider] = _apiKeyController.text;
+
+    setState(() {
+      _activeProvider = newValue;
+      // Load new provider's key from cache
+      _apiKeyController.text = _keyCache[_activeProvider]!;
     });
   }
 
   Future<void> _saveSettings() async {
     final prefs = await SharedPreferences.getInstance();
 
-    if (_apiKeyController.text.trim().isEmpty) {
-      await prefs.remove('custom_api_key');
-    } else {
-      await prefs.setString('custom_api_key', _apiKeyController.text.trim());
-    }
+    // 1. Save whatever is currently in the text box to the cache first
+    _keyCache[_activeProvider] = _apiKeyController.text.trim();
 
+    // 2. Write ALL keys to storage
+    await prefs.setString('api_key_gemini', _keyCache['gemini']!);
+    await prefs.setString('api_key_openai', _keyCache['openai']!);
+    await prefs.setString('api_key_deepseek', _keyCache['deepseek']!);
+
+    // 3. Save Active Provider
+    await prefs.setString('active_ai_provider', _activeProvider);
+
+    // 4. Save Profile
     if (_selectedGender != null) {
       await prefs.setString('user_gender', _selectedGender!);
     }
-
     await prefs.setString('user_height', _heightController.text.trim());
     await prefs.setString('user_weight', _weightController.text.trim());
     await prefs.setString(
@@ -61,43 +111,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Profile & Settings Saved!')));
-      // REMOVED Navigator.pop(context) to stay on this screen
     }
   }
 
-  // --- DATA ACTIONS ---
-
+  // --- DATA ACTIONS (Keep exactly as before) ---
   Future<void> _exportData() async {
     try {
-      // 1. Generate clean JSON
       final jsonString = await DatabaseService().exportDataAsJson();
-
-      // 2. Save to file
       final directory = await getApplicationDocumentsDirectory();
       final path = '${directory.path}/gymini_logs.json';
       final file = File(path);
       await file.writeAsString(jsonString);
 
-      print("✅ File saved locally at: $path");
-
-      // 3. SHARE THE FILE
       if (mounted) {
-        // We calculate the screen size to give the iPad/Mac popover a place to anchor
         final box = context.findRenderObject() as RenderBox?;
-
         await Share.shareXFiles(
           [XFile(path)],
           text: 'My Gymini Workout Logs',
-          // FIX: This 'sharePositionOrigin' is required for iPad/Mac to prevent crashing
           sharePositionOrigin: box != null
               ? box.localToGlobal(Offset.zero) & box.size
               : const Rect.fromLTWH(0, 0, 100, 100),
         );
       }
     } catch (e) {
-      // PRINT ERROR TO TERMINAL
-      print("🔴 Export Error: $e");
-
       if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text("Export Failed: $e")));
@@ -124,15 +160,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
 
     if (confirm == true) {
-      try {
-        await DatabaseService().clearAllData();
-        print("✅ Data Cleared Successfully");
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("All records deleted.")));
-        }
-      } catch (e) {
-        print("🔴 Clear Data Error: $e");
+      await DatabaseService().clearAllData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("All records deleted.")));
       }
     }
   }
@@ -146,22 +177,54 @@ class _SettingsScreenState extends State<SettingsScreen> {
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                // API KEY
-                const Text("🔑 AI Configuration",
+                // --- 1. AI MODEL SELECTION ---
+                const Text("🤖 AI Configuration",
                     style:
                         TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 10),
+                const SizedBox(height: 15),
+
+                // PROVIDER DROPDOWN
+                DropdownButtonFormField<String>(
+                  value: _activeProvider,
+                  decoration: const InputDecoration(
+                    labelText: 'Select AI Model',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.psychology),
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                        value: 'gemini', child: Text('Google Gemini (Flash)')),
+                    DropdownMenuItem(
+                        value: 'openai', child: Text('OpenAI (GPT-4o)')),
+                    DropdownMenuItem(
+                        value: 'deepseek', child: Text('DeepSeek (V3)')),
+                  ],
+                  onChanged: _onProviderChanged,
+                ),
+
+                const SizedBox(height: 15),
+
+                // DYNAMIC API KEY FIELD
                 TextField(
                   controller: _apiKeyController,
-                  decoration: const InputDecoration(
-                      labelText: "Gemini API Key",
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.key)),
+                  decoration: InputDecoration(
+                    labelText:
+                        "${_activeProvider[0].toUpperCase()}${_activeProvider.substring(1)} API Key",
+                    hintText:
+                        _activeProvider == 'gemini' ? "AIzaSy..." : "sk-...",
+                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.key),
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  "Key is saved specifically for $_activeProvider.",
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
                 ),
 
                 const SizedBox(height: 30),
 
-                // PROFILE
+                // --- 2. PERSONAL PROFILE ---
                 const Text("👤 Personal Profile",
                     style:
                         TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
@@ -213,8 +276,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   maxLines: 3,
                   decoration: const InputDecoration(
                     labelText: "Coach Context",
-                    hintText:
-                        "e.g., I'm pregnant, recovering from injury, on a diet... anything your AI coach should know.",
+                    hintText: "e.g., I'm pregnant, recovering from injury...",
                     border: OutlineInputBorder(),
                     alignLabelWithHint: true,
                   ),
@@ -222,7 +284,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                 const SizedBox(height: 30),
 
-                // DATA
+                // --- 3. DATA ---
                 const Text("💾 Data Management",
                     style:
                         TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
