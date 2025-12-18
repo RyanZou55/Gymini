@@ -2,18 +2,51 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:dash_chat_2/dash_chat_2.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // <--- Import this
 import '../../providers/chat_provider.dart';
 
-class ChatScreen extends StatelessWidget {
+class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
 
   @override
+  State<ChatScreen> createState() => _ChatScreenState();
+}
+
+class _ChatScreenState extends State<ChatScreen> {
+  String _modelName = "Gymini Coach"; // Default title
+
+  @override
+  void initState() {
+    super.initState();
+    _loadActiveModel();
+  }
+
+  // Fetch the active model to show in the header
+  Future<void> _loadActiveModel() async {
+    final prefs = await SharedPreferences.getInstance();
+    String provider = prefs.getString('active_ai_provider') ?? 'gemini';
+
+    // Formatting the name for display
+    String display = "Gymini";
+    if (provider == 'gemini')
+      display = "Gymini (Flash)";
+    else if (provider == 'openai')
+      display = "Gymini (GPT-4o)";
+    else if (provider == 'deepseek') display = "Gymini (DeepSeek)";
+
+    if (mounted) {
+      setState(() {
+        _modelName = display;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // 1. Get the manager
     final chatProvider = Provider.of<ChatProvider>(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Gymini Coach')),
+      appBar: AppBar(title: Text(_modelName)), // <--- Use Dynamic Title
       body: DashChat(
         currentUser: ChatUser(id: '1'),
         onSend: (ChatMessage m) {
@@ -21,7 +54,7 @@ class ChatScreen extends StatelessWidget {
         },
         messages: chatProvider.messages,
         typingUsers: chatProvider.isTyping
-            ? [ChatUser(id: '2', firstName: 'Gymini')]
+            ? [ChatUser(id: '2', firstName: 'Coach')]
             : [],
 
         // 2. Custom Render Logic
@@ -29,7 +62,6 @@ class ChatScreen extends StatelessWidget {
             currentUserContainerColor: const Color.fromARGB(255, 116, 164, 248),
             containerColor: Colors.grey[200]!,
             messageTextBuilder: (message, previous, next) {
-              // Check if this is a "Special" Analysis message
               bool isAnalysis =
                   message.customProperties?['action_type'] == 'analysis';
 
