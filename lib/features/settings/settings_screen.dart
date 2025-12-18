@@ -1,7 +1,7 @@
 // lib/features/settings/settings_screen.dart
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'data_management_screen.dart'; // <--- Import New Screen
+import 'data_management_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -139,11 +139,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   items: const [
                     DropdownMenuItem(
-                        value: 'gemini', child: Text('Google Gemini (Flash)')),
+                        value: 'gemini', child: Text('Gemini')), // Simplified
                     DropdownMenuItem(
-                        value: 'openai', child: Text('OpenAI (GPT-4o)')),
+                        value: 'openai', child: Text('ChatGPT')), // Simplified
                     DropdownMenuItem(
-                        value: 'deepseek', child: Text('DeepSeek (V3)')),
+                        value: 'deepseek',
+                        child: Text('DeepSeek')), // Simplified
                   ],
                   onChanged: _onProviderChanged,
                 ),

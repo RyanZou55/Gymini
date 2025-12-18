@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:dash_chat_2/dash_chat_2.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // <--- Import this
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/chat_provider.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -13,7 +13,7 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  String _modelName = "Gymini Coach"; // Default title
+  String _modelName = "Gymini Coach";
 
   @override
   void initState() {
@@ -21,17 +21,15 @@ class _ChatScreenState extends State<ChatScreen> {
     _loadActiveModel();
   }
 
-  // Fetch the active model to show in the header
   Future<void> _loadActiveModel() async {
     final prefs = await SharedPreferences.getInstance();
     String provider = prefs.getString('active_ai_provider') ?? 'gemini';
 
-    // Formatting the name for display
     String display = "Gymini";
     if (provider == 'gemini')
-      display = "Gymini (Flash)";
+      display = "Gymini (Gemini)";
     else if (provider == 'openai')
-      display = "Gymini (GPT-4o)";
+      display = "Gymini (ChatGPT)";
     else if (provider == 'deepseek') display = "Gymini (DeepSeek)";
 
     if (mounted) {
@@ -46,18 +44,21 @@ class _ChatScreenState extends State<ChatScreen> {
     final chatProvider = Provider.of<ChatProvider>(context);
 
     return Scaffold(
-      appBar: AppBar(title: Text(_modelName)), // <--- Use Dynamic Title
+      appBar: AppBar(title: Text(_modelName)),
       body: DashChat(
         currentUser: ChatUser(id: '1'),
         onSend: (ChatMessage m) {
           chatProvider.sendMessage(m);
         },
         messages: chatProvider.messages,
+
+        // --- FIX IS HERE ---
+        // We use '_modelName' instead of the hardcoded string 'Coach'
         typingUsers: chatProvider.isTyping
-            ? [ChatUser(id: '2', firstName: 'Coach')]
+            ? [ChatUser(id: '2', firstName: _modelName)]
             : [],
 
-        // 2. Custom Render Logic
+        // Custom Render Logic (Keep exactly as before)
         messageOptions: MessageOptions(
             currentUserContainerColor: const Color.fromARGB(255, 116, 164, 248),
             containerColor: Colors.grey[200]!,
@@ -80,8 +81,6 @@ class _ChatScreenState extends State<ChatScreen> {
                                 ? Colors.white
                                 : Colors.black)),
                     const SizedBox(height: 10),
-
-                    // Render the Insights Card
                     if (insight.isNotEmpty)
                       Container(
                         padding: const EdgeInsets.all(12),
@@ -102,8 +101,6 @@ class _ChatScreenState extends State<ChatScreen> {
                           ],
                         ),
                       ),
-
-                    // Render the Advice Card
                     if (advice.isNotEmpty)
                       Container(
                         padding: const EdgeInsets.all(12),
@@ -128,7 +125,6 @@ class _ChatScreenState extends State<ChatScreen> {
                 );
               }
 
-              // Default View
               return Text(message.text,
                   style: TextStyle(
                       color: message.user.id == '1'

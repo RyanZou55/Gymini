@@ -5,9 +5,11 @@ import 'ai_provider_interface.dart';
 import '../../models/gymini_response.dart';
 
 class OpenAIProvider implements AIProviderInterface {
-  static const String _baseUrl = 'https://api.openai.com/v1/chat/completions';
-  static const String _model = 'gpt-4o'; // Or 'gpt-4o-mini' for lower cost
+  //static const String _baseUrl = 'https://api.openai.com/v1/chat/completions';
+  static const String _baseUrl =
+      'https://api.chatanywhere.tech/v1/chat/completions';
 
+  static const String _model = 'gpt-4o-mini';
   @override
   Future<GyminiResponse> sendMessage({
     required String apiKey,
