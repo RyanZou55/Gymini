@@ -2,6 +2,7 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:intl/intl.dart';
+import 'dart:convert';
 import '../models/workout.dart';
 import '../models/exercise.dart';
 
@@ -33,6 +34,8 @@ class DatabaseService {
     );
   }
 
+  // --- CRUD METHODS ---
+
   Future<void> insertWorkout(Workout workout) async {
     final db = await database;
     await db.insert('workouts', workout.toMap(),
@@ -43,6 +46,7 @@ class DatabaseService {
     }
   }
 
+  // <--- RESTORED THIS MISSING METHOD
   Future<void> deleteWorkout(String workoutId) async {
     final db = await database;
     await db
@@ -83,16 +87,11 @@ class DatabaseService {
     return workouts;
   }
 
-  // --- AI CONTEXT METHOD ---
   Future<String> getContextForAI() async {
     final db = await database;
-
-    // Fetch ALL workouts (Oldest -> Newest)
     final workoutMaps = await db.query('workouts', orderBy: 'date ASC');
 
-    if (workoutMaps.isEmpty) {
-      return "No previous workout history available.";
-    }
+    if (workoutMaps.isEmpty) return "No previous workout history available.";
 
     StringBuffer buffer = StringBuffer();
     buffer.writeln(
@@ -101,7 +100,6 @@ class DatabaseService {
     for (var wMap in workoutMaps) {
       String workoutId = wMap['id'] as String;
       String date = wMap['date'] as String;
-
       final exerciseMaps = await db
           .query('exercises', where: 'workout_id = ?', whereArgs: [workoutId]);
 
@@ -111,7 +109,58 @@ class DatabaseService {
 
       buffer.writeln("- $date: ${details.join(', ')}");
     }
-
     return buffer.toString();
+  }
+
+  // --- SETTINGS FEATURES ---
+
+  Future<void> clearAllData() async {
+    final db = await database;
+    await db.delete('exercises');
+    await db.delete('workouts');
+  }
+
+  Future<String> exportDataAsJson() async {
+    final db = await database;
+
+    // 1. Fetch all raw data
+    final workouts = await db.query('workouts', orderBy: 'date DESC');
+
+    // 2. Build a Clean List (No IDs)
+    List<Map<String, dynamic>> cleanLogs = [];
+
+    for (var w in workouts) {
+      String id = w['id'] as String;
+
+      // Get exercises for this specific workout
+      final exercises =
+          await db.query('exercises', where: 'workout_id = ?', whereArgs: [id]);
+
+      // Map exercises to clean format
+      List<Map<String, dynamic>> cleanExercises = exercises.map((e) {
+        return {
+          "name": e['name'],
+          "weight": e['weight'],
+          "reps": e['reps'],
+          "sets": e['sets'],
+        };
+      }).toList();
+
+      // Add to logs
+      cleanLogs.add({
+        "date": w['date'],
+        "duration_minutes": w['duration'],
+        "exercises": cleanExercises
+      });
+    }
+
+    // 3. Final Structure
+    final data = {
+      'generated_at': DateTime.now().toIso8601String(),
+      'total_workouts': cleanLogs.length,
+      'logs': cleanLogs,
+    };
+
+    return const JsonEncoder.withIndent('  ').convert(data);
   }
 }

@@ -2,25 +2,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/chat_provider.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'features/log_workout/log_workout_screen.dart';
 import 'features/chat/chat_screen.dart';
+import 'features/settings/settings_screen.dart';
 
-void main() async {
-  //
-  // Ensure Flutter engine is ready before loading .env
-  WidgetsFlutterBinding.ensureInitialized();
-
-  try {
-    // Attempt to load the file
-    await dotenv.load(fileName: ".env");
-  } catch (e) {
-    // If it fails, print the error but DO NOT CRASH the app
-    print("---------------------------------------------------");
-    print("ERROR LOADING .ENV FILE: $e");
-    print("---------------------------------------------------");
-  }
-
+void main() {
   runApp(
     MultiProvider(
       providers: [
@@ -37,23 +23,51 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Gymini')),
+      appBar: AppBar(
+        title: const Text('Gymini'),
+        actions: [
+          IconButton(
+            icon: const Icon(
+              Icons.settings,
+              size: 30.0,
+            ),
+            onPressed: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const SettingsScreen())),
+          )
+        ],
+      ),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ElevatedButton(
-              onPressed: () => Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const LogWorkoutScreen())),
-              child: const Text("Log Workout"),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () => Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const ChatScreen())),
-              child: const Text("Chat with Coach"),
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ElevatedButton.icon(
+                onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const LogWorkoutScreen())),
+                icon: const Icon(Icons.fitness_center),
+                label: const Text("Log Workout"),
+                style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.all(20),
+                    textStyle: const TextStyle(fontSize: 18)),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: () => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const ChatScreen())),
+                icon: const Icon(Icons.chat_bubble),
+                label: const Text("Chat with your AI Coach"),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.all(20),
+                  textStyle: const TextStyle(fontSize: 18),
+                  //backgroundColor: Colors.blue[50]
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
