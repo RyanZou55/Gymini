@@ -35,13 +35,9 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
   void _submit() {
     if (_formKey.currentState!.validate()) {
       // Create the Exercise Object
-      // Note: We use a temp ID or keep the existing one.
-      // The Workout ID is handled by the parent screen when saving the whole workout.
       final newExercise = Exercise(
-        id: widget.exercise?.id ??
-            DateTime.now().toIso8601String(), // New ID if creating
-        workoutId:
-            widget.exercise?.workoutId ?? '', // Placeholder, parent sets this
+        id: widget.exercise?.id ?? DateTime.now().toIso8601String(),
+        // workoutId is removed because we store exercises INSIDE the workout JSON now
         name: _nameController.text.trim(),
         weight: double.parse(_weightController.text),
         reps: int.parse(_repsController.text),

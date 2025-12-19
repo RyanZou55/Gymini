@@ -1,26 +1,36 @@
+// lib/models/exercise.dart
 class Exercise {
   final String id;
-  final String workoutId;
   final String name;
-  final double weight;
-  final int reps;
   final int sets;
+  final int reps;
+  final double weight;
 
   Exercise({
     required this.id,
-    required this.workoutId,
     required this.name,
-    required this.weight,
-    required this.reps,
     required this.sets,
+    required this.reps,
+    required this.weight,
   });
 
-  Map<String, dynamic> toMap() => {
-    'id': id,
-    'workout_id': workoutId,
-    'name': name,
-    'weight': weight,
-    'reps': reps,
-    'sets': sets,
-  };
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'sets': sets,
+      'reps': reps,
+      'weight': weight,
+    };
+  }
+
+  factory Exercise.fromMap(Map<String, dynamic> map) {
+    return Exercise(
+      id: map['id'] ?? '',
+      name: map['name'] ?? '',
+      sets: map['sets'] ?? 0,
+      reps: map['reps'] ?? 0,
+      weight: (map['weight'] ?? 0.0).toDouble(),
+    );
+  }
 }

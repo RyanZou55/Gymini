@@ -18,12 +18,61 @@ class _LogMealScreenState extends State<LogMealScreen> {
   String _selectedType = 'Breakfast';
   DateTime _selectedTime = DateTime.now();
 
-  // TWO State variables now
+  // Track if we are editing an existing meal so we can update it instead of creating a new one
+  String? _existingId;
+
   int _hungerBefore = 3;
   int _hungerAfter = 4;
 
   final Color _themeColor = Colors.deepPurple;
   final List<String> _mealTypes = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
+
+  @override
+  void initState() {
+    super.initState();
+    // Load data immediately when screen opens
+    _loadExistingMeal();
+  }
+
+  /// Checks the database for a meal matching the selected Date and Type.
+  Future<void> _loadExistingMeal() async {
+    // 1. Get all meals for the selected date
+    // Note: Assuming your DatabaseService has a method to get meals by date.
+    // If not, you might need to fetch all and filter, or add a query method.
+    final mealsOnDate = await DatabaseService().getMealsByDate(_selectedTime);
+
+    // 2. Find if there is a meal of the selected TYPE (e.g., "Breakfast")
+    try {
+      final existingMeal = mealsOnDate.firstWhere(
+        (meal) => meal.type == _selectedType,
+      );
+
+      // 3. Populate UI with existing data
+      if (mounted) {
+        setState(() {
+          _itemsController.text = existingMeal.items;
+          _hungerBefore = existingMeal.hungerRatingBefore;
+          _hungerAfter = existingMeal.hungerRatingAfter;
+          _selectedTime =
+              existingMeal.timestamp; // Restore the original saved time
+          _existingId = existingMeal.id; // Store ID for updating
+        });
+      }
+    } catch (e) {
+      // 4. No existing meal found for this type? Reset form to defaults.
+      if (mounted) {
+        setState(() {
+          _itemsController.clear();
+          _hungerBefore = 3;
+          _hungerAfter = 4;
+          _existingId = null; // We are creating a NEW entry
+
+          // Optional: Reset time to 'now' if you prefer, or keep selected date
+          // _selectedTime = DateTime(...)
+        });
+      }
+    }
+  }
 
   Future<void> _pickDate() async {
     final DateTime? picked = await showDatePicker(
@@ -42,9 +91,12 @@ class _LogMealScreenState extends State<LogMealScreen> {
     );
     if (picked != null) {
       setState(() {
+        // Keep the current time (hours/min) but change the date
         _selectedTime = DateTime(picked.year, picked.month, picked.day,
             _selectedTime.hour, _selectedTime.minute);
       });
+      // RELOAD data for the new date
+      await _loadExistingMeal();
     }
   }
 
@@ -97,22 +149,28 @@ class _LogMealScreenState extends State<LogMealScreen> {
       );
       return;
     }
-    final newMeal = Meal(
-      id: DateTime.now().toIso8601String(),
+
+    // Use existing ID if updating, otherwise create new ID
+    final mealToSave = Meal(
+      id: _existingId ?? DateTime.now().toIso8601String(),
       timestamp: _selectedTime,
       type: _selectedType,
       items: _itemsController.text.trim(),
-      hungerRatingBefore: _hungerBefore, // Updated
-      hungerRatingAfter: _hungerAfter, // Updated
+      hungerRatingBefore: _hungerBefore,
+      hungerRatingAfter: _hungerAfter,
     );
 
-    await DatabaseService().insertMeal(newMeal);
+    // If _existingId is not null, this logically updates (depending on your DB implementation).
+    // Usually insertMeal with ConflictAlgorithm.replace handles both.
+    await DatabaseService().insertMeal(mealToSave);
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('Meal Logged!'),
-        duration: Duration(seconds: 1), // Short duration
+        duration: Duration(seconds: 1),
       ));
+
+      // Navigate back to Home
       Navigator.pop(context);
     }
   }
@@ -180,7 +238,11 @@ class _LogMealScreenState extends State<LogMealScreen> {
                 ),
                 checkmarkColor: Colors.white,
                 onSelected: (selected) {
-                  if (selected) setState(() => _selectedType = type);
+                  if (selected) {
+                    setState(() => _selectedType = type);
+                    // RELOAD data when switching types (e.g. from Breakfast to Lunch)
+                    _loadExistingMeal();
+                  }
                 },
               );
             }).toList(),

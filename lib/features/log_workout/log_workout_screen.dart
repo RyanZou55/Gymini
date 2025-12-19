@@ -21,22 +21,59 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
   late DateTime _selectedDate;
   final TextEditingController _durationController = TextEditingController();
   List<Exercise> _exercises = [];
+
+  // Track the ID if we are editing an existing record
   String? _editingWorkoutId;
 
-  // --- FIX IS HERE: Change 'Color' to 'MaterialColor' ---
   final MaterialColor _themeColor = Colors.deepPurple;
 
   @override
   void initState() {
     super.initState();
+    // 1. Initialize Date
     if (widget.workout != null) {
-      _editingWorkoutId = widget.workout!.id;
       _selectedDate = DateTime.parse(widget.workout!.date);
-      _durationController.text = widget.workout!.duration.toString();
-      _exercises = List.from(widget.workout!.exercises);
     } else {
       _selectedDate = DateTime.now();
-      _durationController.text = '';
+    }
+
+    // 2. Load data for this date immediately
+    _loadExistingWorkout();
+  }
+
+  /// Checks if a workout exists for the selected date and loads it.
+  Future<void> _loadExistingWorkout() async {
+    // If a specific workout was passed via navigation (widget.workout), prefer that initially
+    if (widget.workout != null && _editingWorkoutId == null) {
+      setState(() {
+        _editingWorkoutId = widget.workout!.id;
+        _durationController.text = widget.workout!.duration.toString();
+        _exercises = List.from(widget.workout!.exercises);
+      });
+      return;
+    }
+
+    // Otherwise, query the DB for the selected date
+    final workoutsOnDate =
+        await DatabaseService().getWorkoutsByDate(_selectedDate);
+
+    if (mounted) {
+      setState(() {
+        if (workoutsOnDate.isNotEmpty) {
+          // Found a workout! Load the first one found for this date.
+          final existing = workoutsOnDate.first;
+          _editingWorkoutId = existing.id;
+          _durationController.text = existing.duration.toString();
+          _exercises = List.from(existing.exercises);
+          // Optional: Sync time exactly to the saved time
+          // _selectedDate = DateTime.parse(existing.date);
+        } else {
+          // No workout found for this date. Reset form for a new entry.
+          _editingWorkoutId = null;
+          _durationController.clear();
+          _exercises = [];
+        }
+      });
     }
   }
 
@@ -57,9 +94,12 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
     );
     if (picked != null) {
       setState(() {
+        // Keep the current time (hours/min) but change the date
         _selectedDate = DateTime(picked.year, picked.month, picked.day,
             _selectedDate.hour, _selectedDate.minute);
       });
+      // RELOAD data when date changes
+      await _loadExistingWorkout();
     }
   }
 
@@ -129,7 +169,10 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
           const SnackBar(content: Text('Please add at least one exercise.')));
       return;
     }
+
     int duration = int.tryParse(_durationController.text) ?? 0;
+
+    // Use existing ID if we are updating, else create new
     final workoutId = _editingWorkoutId ?? DateTime.now().toIso8601String();
 
     final newWorkout = Workout(
@@ -138,11 +181,24 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
       duration: duration,
       exercises: _exercises,
     );
-    await DatabaseService().insertWorkout(newWorkout);
-    if (mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Workout Saved!')));
-      Navigator.pop(context, true);
+
+    try {
+      await DatabaseService().insertWorkout(newWorkout);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Workout Saved!')));
+
+        // Navigate back to Home
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Error saving: $e'), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
@@ -150,7 +206,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.workout != null ? "Edit Workout" : "Log Workout"),
+        title: Text(_editingWorkoutId != null ? "Edit Workout" : "Log Workout"),
       ),
       body: Column(
         children: [
@@ -158,6 +214,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
+                // DATE & TIME PICKER
                 Row(
                   children: [
                     Expanded(
@@ -200,6 +257,8 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                   ],
                 ),
                 const SizedBox(height: 20),
+
+                // DURATION INPUT
                 TextField(
                   controller: _durationController,
                   keyboardType: TextInputType.number,
@@ -213,6 +272,8 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
+
+                // EXERCISES HEADER
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -226,6 +287,8 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                     )
                   ],
                 ),
+
+                // EXERCISE LIST
                 if (_exercises.isEmpty)
                   Container(
                     padding: const EdgeInsets.all(20),
@@ -244,7 +307,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                       margin: const EdgeInsets.only(bottom: 10),
                       child: ListTile(
                         leading: CircleAvatar(
-                          backgroundColor: _themeColor.shade100, // Now valid
+                          backgroundColor: _themeColor.shade100,
                           child: Text("${idx + 1}",
                               style: TextStyle(color: _themeColor)),
                         ),
@@ -265,6 +328,8 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
               ],
             ),
           ),
+
+          // SAVE BUTTON
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: SizedBox(
