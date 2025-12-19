@@ -1,3 +1,4 @@
+// lib/features/log_meal/log_meal_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
@@ -15,12 +16,13 @@ class _LogMealScreenState extends State<LogMealScreen> {
   final _itemsController = TextEditingController();
 
   String _selectedType = 'Breakfast';
-  int _hungerRating = 3;
   DateTime _selectedTime = DateTime.now();
 
-  // --- THEME COLOR ---
-  final Color _themeColor = Colors.deepPurple;
+  // TWO State variables now
+  int _hungerBefore = 3;
+  int _hungerAfter = 4;
 
+  final Color _themeColor = Colors.deepPurple;
   final List<String> _mealTypes = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
 
   Future<void> _pickDate() async {
@@ -100,16 +102,17 @@ class _LogMealScreenState extends State<LogMealScreen> {
       timestamp: _selectedTime,
       type: _selectedType,
       items: _itemsController.text.trim(),
-      hungerRating: _hungerRating,
+      hungerRatingBefore: _hungerBefore, // Updated
+      hungerRatingAfter: _hungerAfter, // Updated
     );
+
     await DatabaseService().insertMeal(newMeal);
+
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Meal Logged!'),
-          duration: Duration(seconds: 1),
-        ),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Meal Logged!'),
+        duration: Duration(seconds: 1), // Short duration
+      ));
       Navigator.pop(context);
     }
   }
@@ -121,6 +124,7 @@ class _LogMealScreenState extends State<LogMealScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // DATE & TIME
           Row(
             children: [
               Expanded(
@@ -157,6 +161,8 @@ class _LogMealScreenState extends State<LogMealScreen> {
             ],
           ),
           const Divider(height: 30),
+
+          // MEAL TYPE
           const Text("Meal Type",
               style: TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(height: 10),
@@ -168,15 +174,11 @@ class _LogMealScreenState extends State<LogMealScreen> {
                 label: Text(type),
                 selected: isSelected,
                 selectedColor: _themeColor,
-
                 labelStyle: TextStyle(
                   color: isSelected ? Colors.white : Colors.black,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 ),
-
-                // (Optional) Ensure checkmark is also white
                 checkmarkColor: Colors.white,
-
                 onSelected: (selected) {
                   if (selected) setState(() => _selectedType = type);
                 },
@@ -184,6 +186,8 @@ class _LogMealScreenState extends State<LogMealScreen> {
             }).toList(),
           ),
           const SizedBox(height: 20),
+
+          // FOOD ITEMS
           TextField(
             controller: _itemsController,
             decoration: const InputDecoration(
@@ -194,19 +198,59 @@ class _LogMealScreenState extends State<LogMealScreen> {
             ),
           ),
           const SizedBox(height: 20),
-          const Text("Hunger Level (Before Eating)",
+
+          // --- HUNGER SLIDERS ---
+
+          // 1. BEFORE
+          const Text("Hunger BEFORE Eating",
               style: TextStyle(fontWeight: FontWeight.bold)),
-          const Text("1 = Starving, 5 = Stuffed",
-              style: TextStyle(color: Colors.grey, fontSize: 12)),
-          Slider(
-            value: _hungerRating.toDouble(),
-            min: 1,
-            max: 5,
-            divisions: 4,
-            activeColor: _themeColor,
-            label: "$_hungerRating/5",
-            onChanged: (val) => setState(() => _hungerRating = val.toInt()),
+          Row(
+            children: [
+              const Text("Starving",
+                  style: TextStyle(fontSize: 12, color: Colors.grey)),
+              Expanded(
+                child: Slider(
+                  value: _hungerBefore.toDouble(),
+                  min: 1,
+                  max: 5,
+                  divisions: 4,
+                  activeColor: _themeColor,
+                  label: "$_hungerBefore/5",
+                  onChanged: (val) =>
+                      setState(() => _hungerBefore = val.toInt()),
+                ),
+              ),
+              const Text("Full",
+                  style: TextStyle(fontSize: 12, color: Colors.grey)),
+            ],
           ),
+
+          const SizedBox(height: 10),
+
+          // 2. AFTER
+          const Text("Satiety AFTER Eating",
+              style: TextStyle(fontWeight: FontWeight.bold)),
+          Row(
+            children: [
+              const Text("Still Hungry",
+                  style: TextStyle(fontSize: 12, color: Colors.grey)),
+              Expanded(
+                child: Slider(
+                  value: _hungerAfter.toDouble(),
+                  min: 1,
+                  max: 5,
+                  divisions: 4,
+                  activeColor: _themeColor,
+                  label: "$_hungerAfter/5",
+                  onChanged: (val) =>
+                      setState(() => _hungerAfter = val.toInt()),
+                ),
+              ),
+              const Text("Stuffed",
+                  style: TextStyle(fontSize: 12, color: Colors.grey)),
+            ],
+          ),
+
           const SizedBox(height: 40),
           ElevatedButton(
             onPressed: _saveMeal,

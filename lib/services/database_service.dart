@@ -1,7 +1,6 @@
-// lib/services/database_service.dart
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
-import 'dart:convert';
+import 'dart:convert'; // Required for JSON export
 import '../models/workout.dart';
 import '../models/exercise.dart';
 import '../models/meal.dart';
@@ -23,10 +22,9 @@ class DatabaseService {
   Future<Database> _initDatabase() async {
     String path = join(await getDatabasesPath(), 'gymini.db');
 
-    // BUMP VERSION TO 2 to trigger the upgrade
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: (db, version) async {
         await _createWorkoutTables(db);
         await _createMealTable(db);
@@ -34,6 +32,28 @@ class DatabaseService {
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
           await _createMealTable(db);
+        }
+        if (oldVersion < 3) {
+          // Migration: Add new hunger columns if they don't exist
+          var columns = await db.rawQuery('PRAGMA table_info(meals)');
+          bool hasHungerBefore =
+              columns.any((c) => c['name'] == 'hunger_before');
+
+          if (!hasHungerBefore) {
+            // Add columns and migrate old data
+            try {
+              await db.execute(
+                  'ALTER TABLE meals ADD COLUMN hunger_before INTEGER DEFAULT 3');
+              await db.execute(
+                  'ALTER TABLE meals ADD COLUMN hunger_after INTEGER DEFAULT 4');
+
+              // Attempt to copy old 'hunger' to 'hunger_before' if it existed
+              // We wrap in try/catch in case 'hunger' didn't exist
+              await db.execute('UPDATE meals SET hunger_before = hunger');
+            } catch (e) {
+              // Ignore migration errors if column missing
+            }
+          }
         }
       },
     );
@@ -48,7 +68,7 @@ class DatabaseService {
 
   Future<void> _createMealTable(Database db) async {
     await db.execute(
-        'CREATE TABLE meals(id TEXT PRIMARY KEY, timestamp TEXT, type TEXT, items TEXT, hunger INTEGER)');
+        'CREATE TABLE IF NOT EXISTS meals(id TEXT PRIMARY KEY, timestamp TEXT, type TEXT, items TEXT, hunger_before INTEGER, hunger_after INTEGER)');
   }
 
   // --- WORKOUT CRUD ---
@@ -72,14 +92,10 @@ class DatabaseService {
 
   Future<List<Workout>> getWorkoutsForDay(DateTime date) async {
     final db = await database;
-    // Note: This matches the "Day" part of the string (YYYY-MM-DD)
-    // So "2025-12-19T10:00" will still be found by "2025-12-19" query logic
     String dateStr = date.toIso8601String().substring(0, 10);
 
-    final workoutMaps = await db.query('workouts',
-        where: 'date LIKE ?',
-        whereArgs: ['$dateStr%'] // Match anything starting with YYYY-MM-DD
-        );
+    final workoutMaps = await db
+        .query('workouts', where: 'date LIKE ?', whereArgs: ['$dateStr%']);
 
     List<Workout> workouts = [];
     for (var wMap in workoutMaps) {
@@ -121,12 +137,10 @@ class DatabaseService {
     await db.delete('meals', where: 'id = ?', whereArgs: [mealId]);
   }
 
-  // --- THE AI ENGINE (TIMELINE MERGE) ---
+  // --- AI CONTEXT ENGINE ---
 
   Future<String> getContextForAI() async {
     final db = await database;
-
-    // 1. Fetch EVERYTHING (No Limits)
     final workoutMaps = await db.query('workouts');
     final mealMaps = await db.query('meals');
 
@@ -134,15 +148,13 @@ class DatabaseService {
       return "No previous history available.";
     }
 
-    // 2. Create a mixed list of "Events"
     List<Map<String, dynamic>> timeline = [];
 
     // Process Workouts
     for (var wMap in workoutMaps) {
       String workoutId = wMap['id'] as String;
-      String dateStr = wMap['date'] as String; // e.g. "2025-12-19T14:30:00"
+      String dateStr = wMap['date'] as String;
 
-      // Fetch details
       final exerciseMaps = await db
           .query('exercises', where: 'workout_id = ?', whereArgs: [workoutId]);
       List<String> details =
@@ -158,19 +170,22 @@ class DatabaseService {
 
     // Process Meals
     for (var mMap in mealMaps) {
+      // FIX 1 & 2: Explicit casting to 'int?' to satisfy Dart strict typing
+      int hBefore =
+          (mMap['hunger_before'] as int?) ?? (mMap['hunger'] as int?) ?? 3;
+      int hAfter = (mMap['hunger_after'] as int?) ?? 4;
+
       timeline.add({
         'type': 'MEAL',
         'timestamp': DateTime.parse(mMap['timestamp'] as String),
         'details':
-            "[${mMap['type']}] ${mMap['items']} (Hunger: ${mMap['hunger']}/5)",
+            "[${mMap['type']}] ${mMap['items']} (Hunger: $hBefore/5 -> $hAfter/5)",
       });
     }
 
-    // 3. Sort Chronologically (Oldest to Newest)
     timeline.sort((a, b) =>
         (a['timestamp'] as DateTime).compareTo(b['timestamp'] as DateTime));
 
-    // 4. Build the Story String
     StringBuffer buffer = StringBuffer();
     buffer.writeln("COMPLETE USER TIMELINE (Chronological Order):");
 
@@ -178,29 +193,30 @@ class DatabaseService {
       DateTime ts = event['timestamp'];
       String timeStr =
           "${ts.year}-${ts.month.toString().padLeft(2, '0')}-${ts.day.toString().padLeft(2, '0')} ${ts.hour.toString().padLeft(2, '0')}:${ts.minute.toString().padLeft(2, '0')}";
-
       buffer.writeln("[$timeStr] ${event['type']}: ${event['details']}");
     }
 
     return buffer.toString();
   }
 
-  // --- SETTINGS ---
+  // --- FIX 3 & 4: MISSING METHODS RESTORED ---
 
   Future<void> clearAllData() async {
     final db = await database;
     await db.delete('exercises');
     await db.delete('workouts');
-    await db.delete('meals'); // Clear meals too
+    await db.delete('meals');
   }
 
   Future<String> exportDataAsJson() async {
     final db = await database;
     final workouts = await db.query('workouts');
     final meals = await db.query('meals');
-    // (Simplified export logic for brevity, expands on what you had)
+    final exercises = await db.query('exercises');
+
     return const JsonEncoder.withIndent('  ').convert({
       'workouts': workouts,
+      'exercises': exercises,
       'meals': meals,
     });
   }
