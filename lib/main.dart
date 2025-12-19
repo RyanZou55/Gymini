@@ -5,6 +5,7 @@ import 'providers/chat_provider.dart';
 import 'features/log_workout/log_workout_screen.dart';
 import 'features/chat/chat_screen.dart';
 import 'features/settings/settings_screen.dart';
+import 'features/log_meal/log_meal_screen.dart';
 
 void main() {
   runApp(
@@ -43,6 +44,7 @@ class HomeScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // --- 1. LOG WORKOUT BUTTON ---
               ElevatedButton.icon(
                 onPressed: () => Navigator.push(
                     context,
@@ -54,7 +56,25 @@ class HomeScreen extends StatelessWidget {
                     padding: const EdgeInsets.all(20),
                     textStyle: const TextStyle(fontSize: 18)),
               ),
+
               const SizedBox(height: 20),
+
+              // --- 2. LOG MEAL BUTTON (NEW) ---
+              ElevatedButton.icon(
+                onPressed: () => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const LogMealScreen())),
+                icon: const Icon(Icons.restaurant), // Food Icon
+                label: const Text("Log Meal"),
+                style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.all(20),
+                    //backgroundColor: Colors.orange, // Distinct color for food
+                    //foregroundColor: Colors.white, // White text
+                    textStyle: const TextStyle(fontSize: 18)),
+              ),
+
+              const SizedBox(height: 20),
+
+              // --- 3. CHAT BUTTON ---
               ElevatedButton.icon(
                 onPressed: () => Navigator.push(context,
                     MaterialPageRoute(builder: (_) => const ChatScreen())),
