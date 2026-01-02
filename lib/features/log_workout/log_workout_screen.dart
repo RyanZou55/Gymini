@@ -65,8 +65,6 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
           _editingWorkoutId = existing.id;
           _durationController.text = existing.duration.toString();
           _exercises = List.from(existing.exercises);
-          // Optional: Sync time exactly to the saved time
-          // _selectedDate = DateTime.parse(existing.date);
         } else {
           // No workout found for this date. Reset form for a new entry.
           _editingWorkoutId = null;
@@ -329,21 +327,26 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
             ),
           ),
 
-          // SAVE BUTTON
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: _saveWorkout,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _themeColor,
-                  foregroundColor: Colors.white,
+          // --- UPDATED BUTTON SECTION ---
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: _saveWorkout,
+                  // We add this style block to override the global theme
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _themeColor, // Purple Background
+                    foregroundColor: Colors.white, // White Text
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 10, horizontal: 16),
+                  ),
+                  child: const Text("Save Workout",
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 ),
-                child: const Text("Save Workout",
-                    style:
-                        TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               ),
             ),
           ),

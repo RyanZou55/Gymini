@@ -23,11 +23,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isLoading = true;
 
   // Cache keys
-  Map<String, String> _keyCache = {
+  final Map<String, String> _keyCache = {
     'gemini': '',
     'openai': '',
     'deepseek': '',
+    'chatanywhere': '',
   };
+
+  // Define the Theme Color locally for easy usage
+  final Color _themeColor = Colors.deepPurple;
 
   @override
   void initState() {
@@ -44,6 +48,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         '';
     String openaiKey = prefs.getString('api_key_openai') ?? '';
     String deepseekKey = prefs.getString('api_key_deepseek') ?? '';
+    String chatAnywhereKey = prefs.getString('api_key_chatanywhere') ?? '';
 
     setState(() {
       _activeProvider = prefs.getString('active_ai_provider') ?? 'gemini';
@@ -51,8 +56,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _keyCache['gemini'] = geminiKey;
       _keyCache['openai'] = openaiKey;
       _keyCache['deepseek'] = deepseekKey;
+      _keyCache['chatanywhere'] = chatAnywhereKey;
 
-      _apiKeyController.text = _keyCache[_activeProvider]!;
+      _apiKeyController.text = _keyCache[_activeProvider] ?? '';
 
       // Load Profile
       _selectedGender = prefs.getString('user_gender');
@@ -67,21 +73,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _onProviderChanged(String? newValue) {
     if (newValue == null) return;
+
+    // Save the text currently in the box to the cache before switching
     _keyCache[_activeProvider] = _apiKeyController.text;
+
     setState(() {
       _activeProvider = newValue;
-      _apiKeyController.text = _keyCache[_activeProvider]!;
+      // Load the key for the newly selected provider
+      _apiKeyController.text = _keyCache[_activeProvider] ?? '';
     });
   }
 
   Future<void> _saveSettings() async {
     final prefs = await SharedPreferences.getInstance();
 
+    // Ensure current field is saved to cache
     _keyCache[_activeProvider] = _apiKeyController.text.trim();
 
     await prefs.setString('api_key_gemini', _keyCache['gemini']!);
     await prefs.setString('api_key_openai', _keyCache['openai']!);
     await prefs.setString('api_key_deepseek', _keyCache['deepseek']!);
+    await prefs.setString('api_key_chatanywhere', _keyCache['chatanywhere']!);
+
     await prefs.setString('active_ai_provider', _activeProvider);
 
     if (_selectedGender != null) {
@@ -111,7 +124,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: _saveSettings,
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.all(16),
-              backgroundColor: Colors.blueAccent,
+              backgroundColor: _themeColor,
               foregroundColor: Colors.white,
             ),
             child: const Text("Save Changes",
@@ -132,19 +145,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                 DropdownButtonFormField<String>(
                   value: _activeProvider,
-                  decoration: const InputDecoration(
+                  style: const TextStyle(color: Colors.black, fontSize: 16),
+                  dropdownColor: Colors.white,
+                  iconEnabledColor: _themeColor,
+                  decoration: InputDecoration(
                     labelText: 'Select AI Model',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.psychology),
+                    border: const OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.psychology, color: _themeColor),
                   ),
                   items: const [
+                    DropdownMenuItem(value: 'gemini', child: Text('Gemini')),
+                    DropdownMenuItem(value: 'openai', child: Text('ChatGPT')),
                     DropdownMenuItem(
-                        value: 'gemini', child: Text('Gemini')), // Simplified
+                        value: 'chatanywhere', child: Text('ChatAnywhere')),
                     DropdownMenuItem(
-                        value: 'openai', child: Text('ChatGPT')), // Simplified
-                    DropdownMenuItem(
-                        value: 'deepseek',
-                        child: Text('DeepSeek')), // Simplified
+                        value: 'deepseek', child: Text('DeepSeek')),
                   ],
                   onChanged: _onProviderChanged,
                 ),
@@ -159,7 +174,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     hintText:
                         _activeProvider == 'gemini' ? "AIzaSy..." : "sk-...",
                     border: const OutlineInputBorder(),
-                    prefixIcon: const Icon(Icons.key),
+                    prefixIcon: Icon(Icons.key, color: _themeColor),
                   ),
                 ),
                 const SizedBox(height: 5),
@@ -178,8 +193,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                 DropdownButtonFormField<String>(
                   value: _selectedGender,
-                  decoration: const InputDecoration(
-                      labelText: 'Gender', border: OutlineInputBorder()),
+                  style: const TextStyle(color: Colors.black, fontSize: 16),
+                  dropdownColor: Colors.white,
+                  iconEnabledColor: _themeColor,
+                  decoration: InputDecoration(
+                    labelText: 'Gender',
+                    border: const OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.person, color: _themeColor),
+                  ),
                   items: ['Male', 'Female'].map((String value) {
                     return DropdownMenuItem<String>(
                         value: value, child: Text(value));
@@ -196,10 +217,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       child: TextField(
                         controller: _heightController,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                             labelText: "Height",
-                            border: OutlineInputBorder(),
-                            suffixText: "cm"),
+                            border: const OutlineInputBorder(),
+                            suffixText: "cm",
+                            prefixIcon: Icon(Icons.height, color: _themeColor)),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -207,10 +229,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       child: TextField(
                         controller: _weightController,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                             labelText: "Weight",
-                            border: OutlineInputBorder(),
-                            suffixText: "kg"),
+                            border: const OutlineInputBorder(),
+                            suffixText: "kg",
+                            prefixIcon:
+                                Icon(Icons.monitor_weight, color: _themeColor)),
                       ),
                     ),
                   ],
@@ -219,10 +243,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const SizedBox(height: 15),
                 TextField(
                   controller: _extraContextController,
-                  maxLines: 3,
+                  maxLines: 5,
                   decoration: const InputDecoration(
-                    labelText: "Coach Context",
-                    hintText: "e.g., I'm pregnant, recovering from injury...",
+                    labelText: "Custom AI Instructions",
+                    hintText:
+                        "Tell your AI coach about injuries, specific goals, preferred language, or anything you want (e.g., 'I have a bad knee', 'I am vegetarian', 'Answer in Spanish').",
                     border: OutlineInputBorder(),
                     alignLabelWithHint: true,
                   ),
@@ -241,7 +266,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10)),
                   onTap: () {
-                    // Navigate to Sub-Page
                     Navigator.push(
                         context,
                         MaterialPageRoute(

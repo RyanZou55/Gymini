@@ -8,6 +8,7 @@ import 'providers/ai_provider_interface.dart';
 import 'providers/gemini_provider.dart';
 import 'providers/openai_provider.dart';
 import 'providers/deepseek_provider.dart';
+import 'providers/chatanywhere_provider.dart';
 
 class AIService {
   final DatabaseService _dbService = DatabaseService();
@@ -27,6 +28,12 @@ class AIService {
         provider = OpenAIProvider();
         apiKey = prefs.getString('api_key_openai');
         break;
+
+      case 'chatanywhere':
+        provider = ChatAnywhereProvider();
+        apiKey = prefs.getString('api_key_chatanywhere');
+        break;
+
       case 'deepseek':
         provider = DeepSeekProvider();
         apiKey = prefs.getString('api_key_deepseek');

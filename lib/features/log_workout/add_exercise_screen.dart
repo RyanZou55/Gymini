@@ -20,6 +20,9 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
   final _repsController = TextEditingController();
   final _setsController = TextEditingController();
 
+  // Consistent Theme Color
+  final Color _themeColor = Colors.deepPurple;
+
   @override
   void initState() {
     super.initState();
@@ -37,7 +40,6 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
       // Create the Exercise Object
       final newExercise = Exercise(
         id: widget.exercise?.id ?? DateTime.now().toIso8601String(),
-        // workoutId is removed because we store exercises INSIDE the workout JSON now
         name: _nameController.text.trim(),
         weight: double.parse(_weightController.text),
         reps: int.parse(_repsController.text),
@@ -64,11 +66,11 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
               // --- NAME ---
               TextFormField(
                 controller: _nameController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: "Exercise Name",
                   hintText: "e.g. Bench Press",
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.fitness_center),
+                  border: const OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.fitness_center, color: _themeColor),
                 ),
                 validator: (val) =>
                     val == null || val.isEmpty ? "Please enter a name" : null,
@@ -80,10 +82,10 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
                 controller: _weightController,
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: "Weight (kg)",
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.monitor_weight),
+                  border: const OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.monitor_weight, color: _themeColor),
                 ),
                 validator: (val) {
                   if (val == null || val.isEmpty) return "Enter weight";
@@ -100,10 +102,10 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
                     child: TextFormField(
                       controller: _setsController,
                       keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: "Sets",
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.repeat),
+                        border: const OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.repeat, color: _themeColor),
                       ),
                       validator: (val) {
                         if (val == null || val.isEmpty) return "Enter sets";
@@ -117,10 +119,10 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
                     child: TextFormField(
                       controller: _repsController,
                       keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: "Reps",
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.numbers),
+                        border: const OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.numbers, color: _themeColor),
                       ),
                       validator: (val) {
                         if (val == null || val.isEmpty) return "Enter reps";
@@ -140,12 +142,19 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
                 child: ElevatedButton(
                   onPressed: _submit,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blueAccent,
+                    backgroundColor: _themeColor, // Changed from Blue to Purple
                     foregroundColor: Colors.white,
+                    // Fixes the text crushing bug
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 10, horizontal: 16),
                   ),
-                  child: const Text("Add to Workout",
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  child: Text(
+                    widget.exercise == null
+                        ? "Add to Workout"
+                        : "Update Exercise",
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ),
             ],
