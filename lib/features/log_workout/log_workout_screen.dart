@@ -162,6 +162,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
   void _removeExercise(int index) => setState(() => _exercises.removeAt(index));
 
   Future<void> _saveWorkout() async {
+    // 1. Validation: Must have at least one exercise
     if (_exercises.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Please add at least one exercise.')));
@@ -169,6 +170,28 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
     }
 
     int duration = int.tryParse(_durationController.text) ?? 0;
+
+    // --- NEW VALIDATION: Check Duration ---
+    if (duration <= 0) {
+      // Show "Jump Out" Prompt
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text("Duration Required"),
+          content: const Text(
+              "Please enter the duration of your workout (in minutes) to save."),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(), // Close dialog
+              child: const Text("OK",
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      );
+      return; // STOP HERE, do not save
+    }
+    // --------------------------------------
 
     // Use existing ID if we are updating, else create new
     final workoutId = _editingWorkoutId ?? DateTime.now().toIso8601String();
@@ -327,7 +350,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
             ),
           ),
 
-          // --- UPDATED BUTTON SECTION ---
+          // --- SAVE BUTTON ---
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
@@ -336,10 +359,9 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                 height: 50,
                 child: ElevatedButton(
                   onPressed: _saveWorkout,
-                  // We add this style block to override the global theme
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _themeColor, // Purple Background
-                    foregroundColor: Colors.white, // White Text
+                    backgroundColor: _themeColor,
+                    foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(
                         vertical: 10, horizontal: 16),
                   ),

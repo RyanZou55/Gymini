@@ -100,7 +100,7 @@ class HomeScreen extends StatelessWidget {
                     MaterialPageRoute(
                         builder: (_) => const LogWorkoutScreen())),
                 icon: const Icon(Icons.fitness_center),
-                label: const Text("Log Workout"),
+                label: const Text("Track Workout"),
                 style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.all(20),
                     textStyle: const TextStyle(fontSize: 18)),
@@ -113,7 +113,7 @@ class HomeScreen extends StatelessWidget {
                 onPressed: () => Navigator.push(context,
                     MaterialPageRoute(builder: (_) => const LogMealScreen())),
                 icon: const Icon(Icons.restaurant),
-                label: const Text("Log Meal"),
+                label: const Text("Track Food"),
                 style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.all(20),
                     textStyle: const TextStyle(fontSize: 18)),
@@ -126,7 +126,7 @@ class HomeScreen extends StatelessWidget {
                 onPressed: () => Navigator.push(context,
                     MaterialPageRoute(builder: (_) => const ChatScreen())),
                 icon: const Icon(Icons.chat_bubble),
-                label: const Text("Chat with your AI Coach"),
+                label: const Text("Ask Coach Gymini"),
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.all(20),
                   textStyle: const TextStyle(fontSize: 18),
