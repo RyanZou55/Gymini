@@ -1,8 +1,10 @@
 // lib/features/settings/data_management_screen.dart
+import 'dart:convert'; // Added for JSON encoding/decoding
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:intl/intl.dart'; // Added for Readable Dates
 import '../../services/database_service.dart';
 
 class DataManagementScreen extends StatefulWidget {
@@ -13,22 +15,87 @@ class DataManagementScreen extends StatefulWidget {
 }
 
 class _DataManagementScreenState extends State<DataManagementScreen> {
-  // Use the app's main theme color
   final Color _themeColor = Colors.deepPurple;
 
   Future<void> _exportData() async {
     try {
-      final jsonString = await DatabaseService().exportDataAsJson();
+      // 1. Get the raw (ugly) data string from the DB
+      final rawJsonString = await DatabaseService().exportDataAsJson();
+
+      // 2. Decode it so we can clean it up
+      final Map<String, dynamic> rawData = jsonDecode(rawJsonString);
+
+      // 3. Process Meals (Remove IDs, Fix Dates)
+      List<Map<String, dynamic>> cleanMeals = [];
+      if (rawData['meals'] != null) {
+        for (var m in rawData['meals']) {
+          cleanMeals.add({
+            // Format: "Dec 19, 2025 9:19 PM"
+            "time": _formatDate(m['timestamp']),
+            "type": m['type'],
+            "items": m['items'],
+            "hunger_before": m['hunger_before'],
+            "hunger_after": m['hunger_after'],
+          });
+        }
+      }
+
+      // 4. Process Workouts (Remove IDs, Fix Dates, Fix "Stringified" Exercises)
+      List<Map<String, dynamic>> cleanWorkouts = [];
+      if (rawData['workouts'] != null) {
+        for (var w in rawData['workouts']) {
+          // Parse the nested JSON string for exercises
+          List<dynamic> exercisesList = [];
+          try {
+            if (w['exercises'] is String) {
+              exercisesList = jsonDecode(w['exercises']);
+            }
+          } catch (e) {
+            exercisesList = [];
+          }
+
+          // Clean up the exercises list (Remove IDs inside exercises)
+          List<Map<String, dynamic>> cleanExercises = exercisesList.map((ex) {
+            // Cast to Map to safely access fields
+            Map<String, dynamic> exMap = ex as Map<String, dynamic>;
+            return {
+              "name": exMap['name'],
+              "sets": exMap['sets'],
+              "reps": exMap['reps'],
+              "weight": exMap['weight'],
+            };
+          }).toList();
+
+          cleanWorkouts.add({
+            "date": _formatDate(w['date']),
+            "duration_minutes": w['duration'],
+            "exercises": cleanExercises, // Now a real list, not a string
+          });
+        }
+      }
+
+      // 5. Re-assemble into a clean object
+      final Map<String, dynamic> finalData = {
+        'export_date': _formatDate(DateTime.now().toIso8601String()),
+        'meals': cleanMeals,
+        'workouts': cleanWorkouts,
+      };
+
+      // 6. Pretty Print the JSON (Add indentation so it's readable)
+      final prettyString =
+          const JsonEncoder.withIndent('  ').convert(finalData);
+
+      // 7. Save and Share
       final directory = await getApplicationDocumentsDirectory();
       final path = '${directory.path}/gymini_logs.json';
       final file = File(path);
-      await file.writeAsString(jsonString);
+      await file.writeAsString(prettyString);
 
       if (mounted) {
         final box = context.findRenderObject() as RenderBox?;
         await Share.shareXFiles(
           [XFile(path)],
-          text: 'My Gymini Workout Logs',
+          // REMOVED 'text' parameter here to stop the extra text file/caption
           sharePositionOrigin: box != null
               ? box.localToGlobal(Offset.zero) & box.size
               : const Rect.fromLTWH(0, 0, 100, 100),
@@ -39,6 +106,17 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text("Export Failed: $e")));
       }
+    }
+  }
+
+  // Helper to make dates readable (e.g., "2025-12-19 21:19")
+  String _formatDate(String? isoString) {
+    if (isoString == null) return "";
+    try {
+      final dt = DateTime.parse(isoString);
+      return DateFormat('yyyy-MM-dd HH:mm').format(dt);
+    } catch (e) {
+      return isoString;
     }
   }
 
@@ -82,11 +160,11 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
           ),
           const SizedBox(height: 20),
 
-          // --- EXPORT BUTTON (Updated to Purple) ---
+          // --- EXPORT BUTTON ---
           ListTile(
-            leading: Icon(Icons.share, color: _themeColor), // Changed to Purple
+            leading: Icon(Icons.share, color: _themeColor),
             title: const Text("Export Logs"),
-            subtitle: const Text("Save & Share JSON file"),
+            subtitle: const Text("Save clean JSON file"),
             onTap: _exportData,
             tileColor: Colors.grey[100],
             shape:
@@ -96,7 +174,7 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
 
           const SizedBox(height: 15),
 
-          // --- DELETE BUTTON (Kept Red for Safety) ---
+          // --- DELETE BUTTON ---
           ListTile(
             leading: const Icon(Icons.delete_forever, color: Colors.red),
             title: const Text("Clear All Records",
