@@ -94,7 +94,7 @@ class DatabaseService {
     return List.generate(maps.length, (i) => Workout.fromMap(maps[i]));
   }
 
-  // --- AI CONTEXT METHOD (Fixes Error 1) ---
+  // --- AI CONTEXT METHOD (UPDATED) ---
   Future<String> getContextForAI() async {
     final db = await database;
 
@@ -117,13 +117,43 @@ class DatabaseService {
     if (recentWorkouts.isNotEmpty) {
       context += "\nWORKOUTS:\n";
       for (var w in recentWorkouts) {
-        context += "- ${w['date']}: Duration ${w['duration']} mins\n";
+        // 1. Start with the basics
+        String workoutSummary = "- ${w['date']} (${w['duration']} mins): ";
+
+        // 2. Decode the exercises JSON string
+        try {
+          String exercisesJson = w['exercises'] as String;
+          List<dynamic> exercisesList = jsonDecode(exercisesJson);
+
+          if (exercisesList.isEmpty) {
+            workoutSummary += "No exercises logged.";
+          } else {
+            // 3. Loop through and format specific exercises
+            List<String> exerciseDetails = [];
+            for (var ex in exercisesList) {
+              // Extract details (safely handling types)
+              String name = ex['name'] ?? 'Exercise';
+              int sets = ex['sets'] ?? 0;
+              int reps = ex['reps'] ?? 0;
+              // Handle weight as num to cover both int and double
+              num weight = ex['weight'] ?? 0;
+
+              exerciseDetails.add("$name ${sets}x$reps @ ${weight}kg");
+            }
+            // Join them with commas
+            workoutSummary += exerciseDetails.join(", ");
+          }
+        } catch (e) {
+          workoutSummary += "[Error parsing exercises]";
+        }
+
+        context += "$workoutSummary\n";
       }
     }
     return context;
   }
 
-  // --- EXPORT DATA METHOD (Fixes Error 3) ---
+  // --- EXPORT DATA METHOD ---
   Future<String> exportDataAsJson() async {
     final db = await database;
     final allMeals = await db.query('meals');
@@ -138,7 +168,7 @@ class DatabaseService {
     return jsonEncode(data);
   }
 
-  // --- CLEAR DATA METHOD (Fixes Error 4) ---
+  // --- CLEAR DATA METHOD ---
   Future<void> clearAllData() async {
     final db = await database;
     await db.delete('meals');

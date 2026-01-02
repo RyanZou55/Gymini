@@ -13,6 +13,9 @@ class DataManagementScreen extends StatefulWidget {
 }
 
 class _DataManagementScreenState extends State<DataManagementScreen> {
+  // Use the app's main theme color
+  final Color _themeColor = Colors.deepPurple;
+
   Future<void> _exportData() async {
     try {
       final jsonString = await DatabaseService().exportDataAsJson();
@@ -78,8 +81,10 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
             style: TextStyle(color: Colors.grey, fontSize: 16),
           ),
           const SizedBox(height: 20),
+
+          // --- EXPORT BUTTON (Updated to Purple) ---
           ListTile(
-            leading: const Icon(Icons.share, color: Colors.blue),
+            leading: Icon(Icons.share, color: _themeColor), // Changed to Purple
             title: const Text("Export Logs"),
             subtitle: const Text("Save & Share JSON file"),
             onTap: _exportData,
@@ -88,7 +93,10 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             trailing: const Icon(Icons.chevron_right),
           ),
+
           const SizedBox(height: 15),
+
+          // --- DELETE BUTTON (Kept Red for Safety) ---
           ListTile(
             leading: const Icon(Icons.delete_forever, color: Colors.red),
             title: const Text("Clear All Records",
