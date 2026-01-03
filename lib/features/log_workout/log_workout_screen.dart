@@ -324,19 +324,47 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                   ..._exercises.asMap().entries.map((entry) {
                     int idx = entry.key;
                     Exercise ex = entry.value;
+
+                    // --- Step 3 Logic: Handle Strength vs Cardio Display ---
+                    bool isCardio = ex.type == 'cardio';
+
+                    String subtitleText = isCardio
+                        ? "${ex.distance} km in ${ex.duration} mins"
+                        : "${ex.sets} sets x ${ex.reps} reps @ ${ex.weight}kg";
+
+                    IconData leadingIcon =
+                        isCardio ? Icons.directions_run : Icons.fitness_center;
+
                     return Card(
                       margin: const EdgeInsets.only(bottom: 10),
                       child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: _themeColor.shade100,
-                          child: Text("${idx + 1}",
-                              style: TextStyle(color: _themeColor)),
+                        leading: Stack(
+                          alignment: Alignment.bottomRight,
+                          children: [
+                            CircleAvatar(
+                              backgroundColor: _themeColor.shade100,
+                              child: Icon(leadingIcon,
+                                  color: _themeColor, size: 20),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                color: _themeColor,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Text(
+                                "${idx + 1}",
+                                style: const TextStyle(
+                                    color: Colors.white, fontSize: 10),
+                              ),
+                            ),
+                          ],
                         ),
                         title: Text(ex.name,
                             style:
                                 const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Text(
-                            "${ex.sets} sets x ${ex.reps} reps @ ${ex.weight}kg"),
+                        subtitle: Text(subtitleText,
+                            style: TextStyle(color: Colors.grey[700])),
                         trailing: IconButton(
                           icon: const Icon(Icons.delete, color: Colors.red),
                           onPressed: () => _removeExercise(idx),

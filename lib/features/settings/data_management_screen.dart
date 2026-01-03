@@ -1,10 +1,10 @@
 // lib/features/settings/data_management_screen.dart
-import 'dart:convert'; // Added for JSON encoding/decoding
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:intl/intl.dart'; // Added for Readable Dates
+import 'package:intl/intl.dart';
 import '../../services/database_service.dart';
 
 class DataManagementScreen extends StatefulWidget {
@@ -58,17 +58,31 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
           List<Map<String, dynamic>> cleanExercises = exercisesList.map((ex) {
             // Cast to Map to safely access fields
             Map<String, dynamic> exMap = ex as Map<String, dynamic>;
-            return {
+
+            // --- UPDATED FOR CARDIO SUPPORT ---
+            final type = exMap['type'] ?? 'strength';
+
+            Map<String, dynamic> cleanEx = {
               "name": exMap['name'],
-              "sets": exMap['sets'],
-              "reps": exMap['reps'],
-              "weight": exMap['weight'],
+              "type": type,
             };
+
+            if (type == 'cardio') {
+              cleanEx["distance_km"] = exMap['distance'];
+              cleanEx["duration_mins"] = exMap['duration'];
+            } else {
+              cleanEx["sets"] = exMap['sets'];
+              cleanEx["reps"] = exMap['reps'];
+              cleanEx["weight_kg"] = exMap['weight'];
+            }
+
+            return cleanEx;
+            // ----------------------------------
           }).toList();
 
           cleanWorkouts.add({
             "date": _formatDate(w['date']),
-            "duration_minutes": w['duration'],
+            "duration_total_minutes": w['duration'],
             "exercises": cleanExercises, // Now a real list, not a string
           });
         }

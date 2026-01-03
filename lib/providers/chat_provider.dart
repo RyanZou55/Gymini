@@ -18,7 +18,7 @@ class ChatProvider extends ChangeNotifier {
   ChatProvider() {
     _messages.add(
       ChatMessage(
-        text: "I'm connected to your logs. Ask me about your progress!",
+        text: "I'm connected to your records. Ask me anything!",
         user: _gymini,
         createdAt: DateTime.now(),
       ),

@@ -133,12 +133,21 @@ class DatabaseService {
             for (var ex in exercisesList) {
               // Extract details (safely handling types)
               String name = ex['name'] ?? 'Exercise';
-              int sets = ex['sets'] ?? 0;
-              int reps = ex['reps'] ?? 0;
-              // Handle weight as num to cover both int and double
-              num weight = ex['weight'] ?? 0;
+              String type = ex['type'] ?? 'strength';
 
-              exerciseDetails.add("$name ${sets}x$reps @ ${weight}kg");
+              if (type == 'cardio') {
+                // Formatting for Cardio
+                num distance = ex['distance'] ?? 0;
+                num duration = ex['duration'] ?? 0;
+                exerciseDetails.add("$name ${distance}km in ${duration}mins");
+              } else {
+                // Formatting for Strength
+                int sets = ex['sets'] ?? 0;
+                int reps = ex['reps'] ?? 0;
+                // Handle weight as num to cover both int and double
+                num weight = ex['weight'] ?? 0;
+                exerciseDetails.add("$name ${sets}x$reps @ ${weight}kg");
+              }
             }
             // Join them with commas
             workoutSummary += exerciseDetails.join(", ");
