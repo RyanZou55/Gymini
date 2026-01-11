@@ -98,12 +98,10 @@ class DatabaseService {
   Future<String> getContextForAI() async {
     final db = await database;
 
-    // Get last 5 meals
     final recentMeals =
-        await db.query('meals', orderBy: 'timestamp DESC', limit: 5);
-    // Get last 3 workouts
+        await db.query('meals', orderBy: 'timestamp DESC', limit: 100);
     final recentWorkouts =
-        await db.query('workouts', orderBy: 'date DESC', limit: 3);
+        await db.query('workouts', orderBy: 'date DESC', limit: 50);
 
     String context = "Recent User Activity:\n";
 

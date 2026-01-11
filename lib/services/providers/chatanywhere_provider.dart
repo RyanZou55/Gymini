@@ -7,7 +7,7 @@ import '../../models/gymini_response.dart';
 class ChatAnywhereProvider implements AIProviderInterface {
   // ChatAnywhere specific URL
   static const String _baseUrl =
-      'https://api.chatanywhere.tech/v1/chat/completions';
+      'https://api.chatanywhere.org/v1/chat/completions';
 
   // They usually support standard OpenAI model names
   static const String _model = 'gpt-4o-mini';
